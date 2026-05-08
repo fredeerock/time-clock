@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kind Clock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="background-wrap">
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="orb orb-c"></div>
+    </div>
+
+    <main class="app-shell">
+      <header class="app-header card soft-rise">
+        <div>
+          <h1>Kind Clock</h1>
+          <p class="muted">A friendly workspace time tracker</p>
+        </div>
+        <div class="header-actions hidden" id="headerActions">
+          <select id="workplaceSwitch"></select>
+          <button class="btn ghost" id="logoutBtn">Log Out</button>
+        </div>
+      </header>
+
+      <section class="card auth-card soft-rise" id="authCard">
+        <h2>Welcome</h2>
+        <p class="muted">Sign in or create your account.</p>
+        <div class="auth-tabs">
+          <button class="btn tab active" data-auth-tab="login">Login</button>
+          <button class="btn tab" data-auth-tab="signup">Sign Up</button>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <label>Email <input type="email" id="loginEmail" required /></label>
+          <label>Password <input type="password" id="loginPassword" required minlength="6" /></label>
+          <button class="btn primary" type="submit">Login</button>
+        </form>
+
+        <form id="signupForm" class="auth-form hidden">
+          <label>Full Name <input type="text" id="signupName" required /></label>
+          <label>Email <input type="email" id="signupEmail" required /></label>
+          <label>Password <input type="password" id="signupPassword" required minlength="6" /></label>
+          <label>Timezone
+            <input type="text" id="signupTimezone" value="America/Chicago" required />
+          </label>
+          <button class="btn primary" type="submit">Create Account</button>
+        </form>
+      </section>
+
+      <section class="card onboarding-card hidden" id="onboardingCard">
+        <h2>Join or Create a Workplace</h2>
+        <p class="muted">Create a workplace as admin, or join one with a one-time invite code.</p>
+
+        <div class="grid-two">
+          <form id="createWorkplaceForm" class="stacked-form">
+            <h3>Create Workplace (Admin)</h3>
+            <label>Workplace Name <input type="text" id="workplaceName" required /></label>
+            <button class="btn primary" type="submit">Create Workplace</button>
+          </form>
+
+          <form id="joinWorkplaceForm" class="stacked-form">
+            <h3>Join Workplace</h3>
+            <label>Invite Code <input type="text" id="inviteCode" required /></label>
+            <button class="btn secondary" type="submit">Join With Code</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="dashboard">
+        <div class="grid-two">
+          <article class="card soft-rise">
+            <h2>Clock In / Out</h2>
+            <p id="sessionStatus" class="status-pill">No active session</p>
+
+            <form id="clockInForm" class="stacked-form">
+              <label>Auto clock-out mode
+                <select id="autoMode">
+                  <option value="manual">Manual</option>
+                  <option value="duration">After X Hours</option>
+                  <option value="time">At Specific Time</option>
+                </select>
+              </label>
+              <label id="durationLabel" class="hidden">Hours
+                <input type="number" id="durationHours" min="1" max="16" step="0.5" value="8" />
+              </label>
+              <label id="clockOutAtLabel" class="hidden">Clock Out Time
+                <input type="time" id="clockOutAt" value="17:00" />
+              </label>
+              <button class="btn primary" type="submit">Clock In</button>
+            </form>
+
+            <button class="btn warn" id="clockOutBtn" disabled>Clock Out</button>
+
+            <h3>Recent Sessions</h3>
+            <ul id="sessionList" class="plain-list"></ul>
+          </article>
+
+          <article class="card soft-rise">
+            <h2>Time Off</h2>
+            <form id="timeOffForm" class="stacked-form">
+              <label>Start Date <input type="date" id="timeOffStart" required /></label>
+              <label>End Date <input type="date" id="timeOffEnd" required /></label>
+              <label>Hours (optional)
+                <input type="number" id="timeOffHours" min="0" step="0.25" />
+              </label>
+              <label>Notes
+                <textarea id="timeOffNotes" rows="2" placeholder="Vacation, appointment, etc."></textarea>
+              </label>
+              <button class="btn secondary" type="submit">Add Time Off</button>
+            </form>
+            <ul id="timeOffList" class="plain-list"></ul>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card soft-rise">
+            <h2>Weekly Progress</h2>
+            <p class="muted">Week is Monday through Sunday (America/Chicago).</p>
+            <div class="progress-wrap">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <p id="progressText">0 of 0 hours</p>
+          </article>
+
+          <article class="card soft-rise hidden" id="adminPanel">
+            <h2>Admin Panel</h2>
+            <form id="createInviteForm" class="stacked-form">
+              <label>Invite expires in (hours)
+                <input type="number" id="inviteExpiryHours" min="1" max="168" value="24" />
+              </label>
+              <button class="btn secondary" type="submit">Create One-Time Invite Code</button>
+            </form>
+            <p id="latestInvite" class="status-pill">No invite generated yet.</p>
+
+            <h3>Members</h3>
+            <ul id="memberList" class="plain-list"></ul>
+
+            <form id="scheduleForm" class="stacked-form">
+              <label>Member
+                <select id="scheduleMember" required></select>
+              </label>
+              <label>Scheduled Hours / Week
+                <input type="number" id="scheduleHours" min="0" step="0.25" value="40" required />
+              </label>
+              <button class="btn primary" type="submit">Save Weekly Schedule</button>
+            </form>
+
+            <form id="adminCorrectionForm" class="stacked-form">
+              <h3>Correct Session</h3>
+              <label>Session ID <input type="text" id="correctionSessionId" required /></label>
+              <label>New Clock In (ISO)
+                <input type="text" id="correctionClockIn" placeholder="2026-05-08T14:00:00Z" required />
+              </label>
+              <label>New Clock Out (ISO)
+                <input type="text" id="correctionClockOut" placeholder="2026-05-08T22:00:00Z" required />
+              </label>
+              <label>Reason
+                <input type="text" id="correctionReason" required />
+              </label>
+              <button class="btn warn" type="submit">Apply Correction</button>
+            </form>
+          </article>
+        </div>
+      </section>
+
+      <p id="toast" class="toast hidden"></p>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
