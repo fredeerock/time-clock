@@ -173,17 +173,24 @@ execute function public.set_updated_at();
 
 create or replace function public.is_workplace_admin(p_workplace_id uuid)
 returns boolean
-language sql
+language plpgsql
 stable
+security definer
+set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1
     from public.workplace_memberships wm
     where wm.workplace_id = p_workplace_id
       and wm.user_id = auth.uid()
       and wm.role = 'admin'
   );
+end;
 $$;
+
+revoke all on function public.is_workplace_admin(uuid) from public;
+grant execute on function public.is_workplace_admin(uuid) to authenticated;
 
 create or replace function public.consume_invite_code(p_code text, p_user_id uuid)
 returns jsonb
