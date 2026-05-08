@@ -320,6 +320,7 @@ async function onSignup(event) {
 
   setButtonLoading(submitButton, true, "Creating Account...");
   try {
+    // Step 1: Create auth user
     const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
@@ -329,31 +330,52 @@ async function onSignup(event) {
         : error.message;
       showAuthNotice(message, true);
       notify(message, true);
+      setButtonLoading(submitButton, false, "Create Account");
       return;
     }
 
+    // Step 2: Create profile record
     const userId = data.user?.id;
+    let profileSuccess = false;
+    
     if (userId) {
-      const { error: upsertErr } = await supabase.from("profiles").upsert({
-        id: userId,
-        email,
-        full_name: fullName,
-        preferred_timezone: preferredTimezone,
-      });
+      try {
+        const { data: profileData, error: upsertErr } = await supabase.from("profiles").upsert(
+          {
+            id: userId,
+            email,
+            full_name: fullName,
+            preferred_timezone: preferredTimezone,
+          },
+          { onConflict: "id" }
+        );
 
-      if (upsertErr) {
-        notify(upsertErr.message, true);
+        if (upsertErr) {
+          console.error("Profile upsert error:", upsertErr);
+          showAuthNotice("Account created but profile setup failed: " + upsertErr.message, true);
+          notify("Profile setup issue: " + upsertErr.message, true);
+        } else {
+          profileSuccess = true;
+        }
+      } catch (e) {
+        console.error("Profile upsert exception:", e);
+        showAuthNotice("Account created but profile setup encountered an error.", true);
+        notify("Profile setup error: " + (e.message || "Unknown error"), true);
       }
     }
 
-    showAuthNotice(
-      "Account created. Continue with workplace setup below.",
-      false,
-    );
-    notify("Account created. If email confirmation is enabled, confirm then log in.");
-  } catch (_error) {
-    showAuthNotice("Signup failed due to a network or browser error.", true);
-    notify("Signup failed due to a network or browser error.", true);
+    // Step 3: Show completion message
+    if (profileSuccess) {
+      showAuthNotice(
+        "Account created. Continue with workplace setup below.",
+        false,
+      );
+      notify("Account created successfully. You can now set up your workplace.");
+    }
+  } catch (err) {
+    console.error("Signup exception:", err);
+    showAuthNotice("Signup failed: " + (err.message || "Unknown error"), true);
+    notify("Signup failed: " + (err.message || "Unknown error"), true);
   } finally {
     setButtonLoading(submitButton, false, "Create Account");
   }
