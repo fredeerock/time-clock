@@ -518,7 +518,24 @@ create policy audit_select_admin on public.audit_logs
 for select
 using (public.is_workplace_admin(workplace_id));
 
+-- Admin function to delete all auth users (for testing/cleanup)
+create or replace function public.delete_all_auth_users()
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+begin
+  delete from auth.users;
+  get diagnostics v_count = row_count;
+  return 'Deleted ' || v_count || ' auth users';
+end;
+$$;
+
 grant execute on function public.consume_invite_code(text, uuid) to authenticated;
 grant execute on function public.get_weekly_progress(uuid, uuid, date) to authenticated;
 grant execute on function public.admin_correct_clock_session(uuid, timestamptz, timestamptz, text) to authenticated;
 grant execute on function public.run_auto_clock_out() to service_role;
+grant execute on function public.delete_all_auth_users() to authenticated;
