@@ -41,6 +41,7 @@ const el = {
   durationLabel: document.getElementById("durationLabel"),
   clockOutAtLabel: document.getElementById("clockOutAtLabel"),
   clockOutBtn: document.getElementById("clockOutBtn"),
+  authNotice: document.getElementById("authNotice"),
 };
 
 initialize();
@@ -71,6 +72,7 @@ function bindAuthTabs() {
       const tab = button.dataset.authTab;
       loginForm.classList.toggle("hidden", tab !== "login");
       signupForm.classList.toggle("hidden", tab !== "signup");
+      hideAuthNotice();
     });
   }
 }
@@ -129,7 +131,9 @@ function bindValidationFeedback() {
       (event) => {
         const field = event.target;
         if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-          notify(field.validationMessage || "Please complete the required fields.", true);
+          const message = field.validationMessage || "Please complete the required fields.";
+          showAuthNotice(message, true);
+          notify(message, true);
         }
       },
       true,
@@ -290,12 +294,15 @@ async function onLogin(event) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      showAuthNotice(error.message, true);
       notify(error.message, true);
       return;
     }
 
+    showAuthNotice("Login successful. Loading your workspace...", false);
     notify("Welcome back.");
   } catch (_error) {
+    showAuthNotice("Login failed due to a network or browser error.", true);
     notify("Login failed due to a network or browser error.", true);
   } finally {
     setButtonLoading(submitButton, false, "Login");
@@ -316,7 +323,12 @@ async function onSignup(event) {
     const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
-      notify(error.message, true);
+      const isDuplicate = String(error.message || "").toLowerCase().includes("already registered");
+      const message = isDuplicate
+        ? "That email already has an account. Use the Login tab instead."
+        : error.message;
+      showAuthNotice(message, true);
+      notify(message, true);
       return;
     }
 
@@ -334,12 +346,33 @@ async function onSignup(event) {
       }
     }
 
+    showAuthNotice(
+      "Account created. Continue with workplace setup below.",
+      false,
+    );
     notify("Account created. If email confirmation is enabled, confirm then log in.");
   } catch (_error) {
+    showAuthNotice("Signup failed due to a network or browser error.", true);
     notify("Signup failed due to a network or browser error.", true);
   } finally {
     setButtonLoading(submitButton, false, "Create Account");
   }
+}
+
+function showAuthNotice(message, isError = false) {
+  if (!el.authNotice) return;
+  el.authNotice.textContent = message;
+  el.authNotice.classList.remove("hidden", "error");
+  if (isError) {
+    el.authNotice.classList.add("error");
+  }
+}
+
+function hideAuthNotice() {
+  if (!el.authNotice) return;
+  el.authNotice.classList.add("hidden");
+  el.authNotice.classList.remove("error");
+  el.authNotice.textContent = "";
 }
 
 function setButtonLoading(button, isLoading, idleText) {
