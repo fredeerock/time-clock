@@ -1,6 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
+// Helper to wrap promises with a timeout
+function withTimeout(promise, ms = 10000) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms);
+  });
+  
+  return Promise.race([promise, timeoutPromise])
+    .finally(() => clearTimeout(timeoutId));
+}
+
 if (
   SUPABASE_URL === "YOUR_SUPABASE_URL" ||
   SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY"
@@ -181,55 +192,77 @@ async function refreshApp() {
 async function ensureProfile() {
   const fallbackName = state.user.email.split("@")[0];
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago";
-  const { data: existing, error: selectErr } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", state.user.id)
-    .maybeSingle();
+  
+  try {
+    const { data: existing, error: selectErr } = await withTimeout(
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", state.user.id)
+        .maybeSingle()
+    );
 
-  if (selectErr) {
-    notify(selectErr.message, true);
-    return;
+    if (selectErr) {
+      console.error("Profile select error:", selectErr);
+      notify(selectErr.message, true);
+      return;
+    }
+
+    if (existing) {
+      state.profile = existing;
+      return;
+    }
+
+    const profile = {
+      id: state.user.id,
+      email: state.user.email,
+      full_name: fallbackName,
+      preferred_timezone: timezone,
+    };
+
+    const { data, error } = await withTimeout(
+      supabase
+        .from("profiles")
+        .insert(profile)
+        .select()
+        .single()
+    );
+
+    if (error) {
+      console.error("Profile insert error:", error);
+      notify(error.message, true);
+      return;
+    }
+
+    state.profile = data;
+  } catch (err) {
+    console.error("ensureProfile error:", err);
+    notify("Error setting up profile: " + (err.message || "Unknown error"), true);
   }
-
-  if (existing) {
-    state.profile = existing;
-    return;
-  }
-
-  const profile = {
-    id: state.user.id,
-    email: state.user.email,
-    full_name: fallbackName,
-    preferred_timezone: timezone,
-  };
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .insert(profile)
-    .select()
-    .single();
-
-  if (error) {
-    notify(error.message, true);
-    return;
-  }
-
-  state.profile = data;
 }
 
 async function loadMemberships() {
-  const { data, error } = await supabase
-    .from("workplace_memberships")
-    .select("workplace_id, role, workplaces(id, name)")
-    .eq("user_id", state.user.id);
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from("workplace_memberships")
+        .select("workplace_id, role, workplaces(id, name)")
+        .eq("user_id", state.user.id),
+      5000
+    );
 
-  if (error) {
-    notify(error.message, true);
-    return;
+    if (error) {
+      console.error("loadMemberships error:", error);
+      notify(error.message, true);
+      return;
+    }
+
+    state.memberships = data || [];
+  } catch (err) {
+    console.error("loadMemberships timeout or error:", err);
+    // Continue anyway with empty memberships to show onboarding
+    state.memberships = [];
   }
-
-  state.memberships = data || [];
 }
 
 function showAuthView() {
