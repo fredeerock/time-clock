@@ -1,6 +1,6 @@
-# Kind Clock
+# Workplace Time Tracker
 
-Kind Clock is a static web app designed for GitHub Pages and backed by Supabase for auth + database.
+Workplace Time Tracker is a static web app designed for GitHub Pages and backed by Supabase for auth + database.
 
 ## Features started in this implementation
 
@@ -20,7 +20,7 @@ Kind Clock is a static web app designed for GitHub Pages and backed by Supabase 
 ## Project files
 
 - `index.html`: page markup and section layout
-- `styles.css`: friendly visual style
+- `styles.css`: business-style visual theme
 - `app.js`: Supabase client logic and UI behavior
 - `config.js`: Supabase URL/anon key config
 - `supabase/schema.sql`: schema, RLS policies, and RPC functions
