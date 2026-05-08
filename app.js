@@ -48,6 +48,7 @@ initialize();
 function initialize() {
   bindAuthTabs();
   bindForms();
+  bindValidationFeedback();
   bindSmallInteractions();
   hydrateSession();
 
@@ -117,6 +118,23 @@ function bindForms() {
     state.currentRole = selected.role;
     await renderAuthenticatedState();
   });
+}
+
+function bindValidationFeedback() {
+  const forms = [document.getElementById("loginForm"), document.getElementById("signupForm")];
+  for (const form of forms) {
+    if (!form) continue;
+    form.addEventListener(
+      "invalid",
+      (event) => {
+        const field = event.target;
+        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+          notify(field.validationMessage || "Please complete the required fields.", true);
+        }
+      },
+      true,
+    );
+  }
 }
 
 async function hydrateSession() {
@@ -263,49 +281,71 @@ function drawAdminVisibility() {
 
 async function onLogin(event) {
   event.preventDefault();
+  const submitButton = event.currentTarget.querySelector('button[type="submit"]');
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  setButtonLoading(submitButton, true, "Signing In...");
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    notify(error.message, true);
-    return;
+    if (error) {
+      notify(error.message, true);
+      return;
+    }
+
+    notify("Welcome back.");
+  } catch (_error) {
+    notify("Login failed due to a network or browser error.", true);
+  } finally {
+    setButtonLoading(submitButton, false, "Login");
   }
-
-  notify("Welcome back.");
 }
 
 async function onSignup(event) {
   event.preventDefault();
+  const submitButton = event.currentTarget.querySelector('button[type="submit"]');
 
   const fullName = document.getElementById("signupName").value;
   const email = document.getElementById("signupEmail").value;
   const password = document.getElementById("signupPassword").value;
   const preferredTimezone = document.getElementById("signupTimezone").value;
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  setButtonLoading(submitButton, true, "Creating Account...");
+  try {
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
-  if (error) {
-    notify(error.message, true);
-    return;
-  }
-
-  const userId = data.user?.id;
-  if (userId) {
-    const { error: upsertErr } = await supabase.from("profiles").upsert({
-      id: userId,
-      email,
-      full_name: fullName,
-      preferred_timezone: preferredTimezone,
-    });
-
-    if (upsertErr) {
-      notify(upsertErr.message, true);
+    if (error) {
+      notify(error.message, true);
+      return;
     }
-  }
 
-  notify("Account created. If email confirmation is enabled, confirm then log in.");
+    const userId = data.user?.id;
+    if (userId) {
+      const { error: upsertErr } = await supabase.from("profiles").upsert({
+        id: userId,
+        email,
+        full_name: fullName,
+        preferred_timezone: preferredTimezone,
+      });
+
+      if (upsertErr) {
+        notify(upsertErr.message, true);
+      }
+    }
+
+    notify("Account created. If email confirmation is enabled, confirm then log in.");
+  } catch (_error) {
+    notify("Signup failed due to a network or browser error.", true);
+  } finally {
+    setButtonLoading(submitButton, false, "Create Account");
+  }
+}
+
+function setButtonLoading(button, isLoading, idleText) {
+  if (!button) return;
+  button.disabled = isLoading;
+  button.textContent = isLoading ? "Please wait..." : idleText;
 }
 
 async function onCreateWorkplace(event) {

@@ -312,6 +312,7 @@ select:focus {
   border-radius: 7px;
   box-shadow: 0 8px 20px rgba(17, 24, 39, 0.2);
   font-size: 0.92rem;
+  z-index: 1200;
 }
 
 @media (max-width: 800px) {
